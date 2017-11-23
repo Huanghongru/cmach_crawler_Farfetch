@@ -6,6 +6,8 @@ import re
 import urllib
 import urllib2
 import urlparse
+import itertools
+import multiprocessing as mp
 from bs4 import BeautifulSoup
 
 main_page = "https://www.farfetch.cn"
@@ -118,25 +120,4 @@ def crawl_product_page():
 
 
 if __name__ == '__main__':
-    # product_full_page="https://www.farfetch.cn/uk/shopping/women/pringle-of-scotland-raglan-jumper--item-12157912.aspx?storeid=10760&from=listing&tglmdl=1"
-    # req = urllib2.Request(product_full_page, headers=header)
-    # content = urllib2.urlopen(req, timeout=30)
-    # soup = BeautifulSoup(content, "lxml")
-    # imgs = soup.findAll("img", {"itemprop": "image",
-    #                             "class": "responsive js-blurload ff-blurload"})
-    # brand = soup.find("a", {"itemprop": "brand"}).string
-    # name = soup.find("span", {"itemprop": "name"}).string.strip()
-    # price = soup.find("span", {"class": "listing-price js-price"}).string
-    # info_list = [brand, name, price]
-    # info_list += [i.get("data-large") for i in imgs]
-    # info = "\t".join(info_list).encode('utf-8') + '\n'
-    #
-    # print info
-    #
-    # with open("product.txt", "a") as f:
-    #     f.write(info)
-
-    # crawl_product_page()
-    with open("product_page_Trousers.txt", "r") as f:
-        l = f.readlines()
-        print len(l)
+    crawl_product_page()
