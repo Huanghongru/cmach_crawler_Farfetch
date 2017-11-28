@@ -30,6 +30,7 @@ cate_list = {   "category-136253": "All In One",
                 "category-136021": "Suits",
                 "category-135983": "Tops",
                 "category-135981": "Trousers"   }
+lock = mp.Lock()
 
 # The network sometimes breaks.
 # Use this function to skip the page we have crawled
@@ -91,33 +92,62 @@ def crawl_product_page():
         with open(cate, "r") as f:
             to_crawl_product_list = f.readlines()
 
-        for product in to_crawl_product_list:
-            product_full_page = urlparse.urljoin(main_page, product.strip('\n'))
-            req = urllib2.Request(product_full_page, headers=header)
-            if check_crawl(product_full_page, "crawled_product.txt"):
-                print "This page has been crawled!! {}".format(product_full_page)
-                continue
-            try:
-                content = urllib2.urlopen(req, timeout=30)
-                soup = BeautifulSoup(content, "lxml")
-                imgs = soup.findAll("img", {"itemprop": "image",
-                                            "class": "responsive js-blurload ff-blurload"})
-                brand = soup.find("a", {"itemprop": "brand"}).string
-                name = soup.find("span", {"itemprop": "name"}).string.strip()
-                price = soup.find("span", {"class": "listing-price js-price"}).string
-                info_list = [brand, name, price]
-                info_list += [i.get("data-large") for i in imgs]
-                info = "\t".join(info_list).encode('utf-8') + '\n'
+        pool_size = mp.cpu_count() * 2
+        pool = mp.Pool(processes=pool_size)
+        pool.map(crawler, to_crawl_product_list)
 
-                with open("product.txt", "a") as f:
-                    f.write(info)
-                print "Crawl product {} successfully!".format(name)
+        pool.close()
+        pool.join()
 
-                with open("crawled_product.txt", "a") as f:
-                    f.write(product_full_page+'\n')
-            except Exception as e:
-                print e
 
+def crawler(product):
+    global lock
+    product_full_page = urlparse.urljoin(main_page, product.strip('\n'))
+    req = urllib2.Request(product_full_page, headers=header)
+    if check_crawl(product_full_page, "crawled_product.txt"):
+        print "This page has been crawled!! {}".format(product_full_page)
+        return
+    try:
+        content = urllib2.urlopen(req, timeout=30)
+        soup = BeautifulSoup(content, "lxml")
+        imgs = soup.findAll("img", {"itemprop": "image",
+                                    "class": "responsive js-blurload ff-blurload"})
+        brand = soup.find("a", {"itemprop": "brand"}).string
+        name = soup.find("span", {"itemprop": "name"}).string.strip()
+        price = soup.find("span", {"class": "listing-price js-price"}).string
+        info_list = [brand, name, price]
+        info_list += [i.get("data-large") for i in imgs]
+        info = "\t".join(info_list).encode('utf-8') + '\n'
+
+        with lock:
+            with open("product.txt", "a") as f:
+                f.write(info)
+            print "Crawl product {} successfully!".format(name)
+
+            with open("crawled_product.txt", "a") as f:
+                f.write(product_full_page + '\n')
+    except Exception as e:
+        print e
+
+def crawler_start(a_b):
+    """ A strange way to deal with multiprocessing. """
+    return crawler(*a_b)
+
+def update():
+    id = 1000000
+    pic = []
+    with open("product_final.txt", "a") as f:
+        with open("product.txt", "r") as pf:
+            l = pf.readlines()
+            for i in range(id, id+len(l)):
+                pic += l[i-id].split('\t')[3:]
+                info = l[i-id].split('\t')[:3]
+                info = [str(i)] + info
+
+                product_info = '\t'.join(info)+'\n'
+                f.write(product_info)
+                print "write info: {}".format(product_info)
+    print len(pic)
 
 if __name__ == '__main__':
-    crawl_product_page()
+    update()
